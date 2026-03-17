@@ -1,33 +1,53 @@
 <template>
-    <div>
-<h1> </h1>
-
-
-    </div>
+  <div class="container">
+    <PokemonCard
+      v-for="(scores, index) in pokemon"
+      :key="scores.name"
+      :id="index + 1"
+      :pokemon="scores"
+    />
+    <p v-if="isLoading" class="status">Loading...</p>
+    <p v-else-if="errorMessage" class="status error">{{ errorMessage }}</p>
+  </div>
 </template>
 
-<script>
-import {ref, onMounted}
 
-const SHSAT {
-    
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const SHSAT = ref([])
+const isLoading = ref(false)
+const errorMessage = ref('')
+
+async function getSHSATSCORES() {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await fetch('https://data.cityofnewyork.us/resource/unse-x4pq.json')
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    const data = await response.json()
+    SHSAT.value = Array.isArray(data.results) ? data.results : []
+  } catch (error) {
+    SHSAT.value = []
+    errorMessage.value = error instanceof Error ? error.message : 'Unable to display SHSAT data.'
+  } finally {
+    isLoading.value = false
+  }
 }
 
-try {
-  // Try to do this...
-  const getScores = await fetch(url)
-  if (!response.ok) throw new Error('Request failed')
-  const data = await response.json()
-  pokemon.value = data.results
-} catch (error) {
-  // If anything goes wrong, run this instead
-  errorMessage.value = error.message
-} finally {
-  // This ALWAYS runs, whether it worked or failed
-  isLoading.value = false
-}
+onMounted(() => {
+  getSHSATSCORES()
+})
 </script>
+
 
 <style scoped>
 
+
 </style>
+
