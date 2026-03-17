@@ -1,11 +1,11 @@
 <template>
   <div class="container">
-    <PokemonCard
-      v-for="(scores, index) in pokemon"
-      :key="scores.name"
-      :id="index + 1"
-      :pokemon="scores"
-    />
+    <div v-for="(scores, index) in SHSAT" :key="index">
+      <p>{{ scores.summary }}</p>
+      <p>{{ scores.year }}</p>
+      <p>{{ scores.total }}</p>
+    </div>
+
     <p v-if="isLoading" class="status">Loading...</p>
     <p v-else-if="errorMessage" class="status error">{{ errorMessage }}</p>
   </div>
@@ -31,7 +31,7 @@ async function getSHSATSCORES() {
     }
 
     const data = await response.json()
-    SHSAT.value = Array.isArray(data.results) ? data.results : []
+    SHSAT.value = Array.isArray(data) ? data : []
   } catch (error) {
     SHSAT.value = []
     errorMessage.value = error instanceof Error ? error.message : 'Unable to display SHSAT data.'
