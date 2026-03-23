@@ -42,7 +42,27 @@ async function getSHSATSCORES() {
 
 onMounted(() => {
   getSHSATSCORES()
+
+  
+  const data = {
+  labels: SHSAT.value.slice(0, 5).map(item => item.year),
+  datasets: [
+    {
+      label: 'SHSAT Totals',
+      data: SHSAT.value.slice(0, 5).map(item => Number(item.total)),
+      backgroundColor: [
+        '#ff6384',
+        '#36a2eb',
+        '#ffcd56',
+        '#4bc0c0',
+        '#9966ff'
+      ],
+    }
+  ]
+};
 })
+
+
 </script>
 
 
