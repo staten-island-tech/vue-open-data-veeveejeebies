@@ -1,30 +1,50 @@
 <template>
-
   <div>
-    <Pie v-if="chartData" :data="chartData" />
-  </div>
+    <nav style="margin-bottom: 20px;">
+      <button 
+        :class="{ active: selectedChart === 'shsat' }" 
+        @click="selectedChart = 'shsat'">
+        SHSAT Data
+      </button>
+      <button 
+        :class="{ active: selectedChart === 'ethnicity' }" 
+        @click="selectedChart = 'ethnicity'">
+        Ethnicity Data
+      </button>
+    </nav>
 
-
-  <div class="container">
-    <div v-for="(scores, index) in SHSAT" :key="index">
-      <p>{{ scores.summary }}</p>
-      <p>{{ scores.year }}</p>
-      <p>{{ scores.total }}</p>
+    <!-- SHSAT Chart -->
+    <div v-if="selectedChart === 'shsat'">
+      <h2>SHSAT Test Takers and Accepted Students by School</h2>
+      <!-- Use local PieChart component -->
+      <PieChart v-if="shsatChartData" :chart-data="shsatChartData" />
     </div>
 
-    <p v-if="isLoading" class="status">Loading...</p>
-    <p v-else-if="errorMessage" class="status error">{{ errorMessage }}</p>
+    <!-- Ethnicity Chart -->
+    <div v-else-if="selectedChart === 'ethnicity'">
+      <h2>Ethnicity Breakdown of Students and Offers</h2>
+      <PieChart v-if="ethnicityChartData" :chart-data="ethnicityChartData" />
+    </div>
   </div>
 </template>
 
-
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, defineComponent } from 'vue'
+import { Chart, Title, Tooltip, Legend, ArcElement } from 'chart.js'
 
+// Register Chart.js components (required)
+Chart.register(Title, Tooltip, Legend, ArcElement)
+
+// --- Original API fetch state ---
 const SHSAT = ref([])
+const shsatChartData = ref(null)
+const ethnicityData = ref([])
+const ethnicityChartData = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref('')
+const selectedChart = ref('shsat')
 
+// --- Original API fetch function for SHSAT (unchanged) ---
 async function getSHSATSCORES() {
   isLoading.value = true
   errorMessage.value = ''
@@ -38,6 +58,24 @@ async function getSHSATSCORES() {
 
     const data = await response.json()
     SHSAT.value = Array.isArray(data) ? data : []
+
+    // Prepare chart data for SHSAT pie chart
+    shsatChartData.value = {
+      labels: SHSAT.value.slice(0, 5).map(item => item.year),
+      datasets: [
+        {
+          label: 'SHSAT Totals',
+          data: SHSAT.value.slice(0, 5).map(item => Number(item.total)),
+          backgroundColor: [
+            '#ff6384',
+            '#36a2eb',
+            '#ffcd56',
+            '#4bc0c0',
+            '#9966ff'
+          ],
+        }
+      ]
+    }
   } catch (error) {
     SHSAT.value = []
     errorMessage.value = error instanceof Error ? error.message : 'Unable to display SHSAT data.'
@@ -46,100 +84,126 @@ async function getSHSATSCORES() {
   }
 }
 
-onMounted(() => {
-  getSHSATSCORES()
+// --- Fetch ethnicity data ---
+// NOTE: Replace the URL below with your real ethnicity data API endpoint
+async function getEthnicityData() {
+  try {
+    const response = await fetch('https://your-ethnicity-api-endpoint.json') // <-- CHANGE this URL to your real API
+    if (!response.ok) throw new Error(`Request failed with status ${response.status}`)
 
-  
-  const data = {
-  labels: SHSAT.value.slice(0, 5).map(item => item.year),
-  datasets: [
-    {
-      label: 'SHSAT Totals',
-      data: SHSAT.value.slice(0, 5).map(item => Number(item.total)),
-      backgroundColor: [
-        '#ff6384',
-        '#36a2eb',
-        '#ffcd56',
-        '#4bc0c0',
-        '#9966ff'
-      ],
-    }
-  ]
-};
-})
-const actions = [
-  {
-    name: 'Randomize',
-    handler(chart) {
-      chart.data.datasets.forEach(dataset => {
-        dataset.data = Utils.numbers({count: chart.data.labels.length, min: 0, max: 100});
-      });
-      chart.update();
-    }
-  },
-  {
-    name: 'Add Dataset',
-    handler(chart) {
-      const data = chart.data;
-      const newDataset = {
-        label: 'Dataset ' + (data.datasets.length + 1),
-        backgroundColor: [],
-        data: [],
-      };
+    const data = await response.json()
+    ethnicityData.value = Array.isArray(data) ? data : []
 
-      for (let i = 0; i < data.labels.length; i++) {
-        newDataset.data.push(Utils.numbers({count: 1, min: 0, max: 100}));
-
-        const colorIndex = i % Object.keys(Utils.CHART_COLORS).length;
-        newDataset.backgroundColor.push(Object.values(Utils.CHART_COLORS)[colorIndex]);
-      }
-
-      chart.data.datasets.push(newDataset);
-      chart.update();
-    }
-  },
-  {
-    name: 'Add Data',
-    handler(chart) {
-      const data = chart.data;
-      if (data.datasets.length > 0) {
-        data.labels.push('data #' + (data.labels.length + 1));
-
-        for (let index = 0; index < data.datasets.length; ++index) {
-          data.datasets[index].data.push(Utils.rand(0, 100));
+    // Prepare ethnicity chart data with two datasets
+    ethnicityChartData.value = {
+      labels: ethnicityData.value.map(item => item.ethnicity),
+      datasets: [
+        {
+          label: 'Total Students',
+          data: ethnicityData.value.map(item => Number(item.total_students) || 0),
+          backgroundColor: generateColors(ethnicityData.value.length),
+        },
+        {
+          label: 'Offers',
+          data: ethnicityData.value.map(item => Number(item.offers) || 0),
+          backgroundColor: generateColors(ethnicityData.value.length, 0.5),
         }
-
-        chart.update();
-      }
+      ]
     }
-  },
-  {
-    name: 'Remove Dataset',
-    handler(chart) {
-      chart.data.datasets.pop();
-      chart.update();
-    }
-  },
-  {
-    name: 'Remove Data',
-    handler(chart) {
-      chart.data.labels.splice(-1, 1); // remove the label first
-
-      chart.data.datasets.forEach(dataset => {
-        dataset.data.pop();
-      });
-
-      chart.update();
-    }
+  } catch (error) {
+    ethnicityData.value = []
   }
-];
+}
 
+// Utility function to generate consistent RGBA colors
+function generateColors(count, opacity = 1) {
+  const baseColors = [
+    '255, 99, 132',
+    '54, 162, 235',
+    '255, 206, 86',
+    '75, 192, 192',
+    '153, 102, 255',
+    '255, 159, 64',
+    '199, 199, 199',
+  ]
+  const colors = []
+  for (let i = 0; i < count; i++) {
+    const c = baseColors[i % baseColors.length]
+    colors.push(`rgba(${c}, ${opacity})`)
+  }
+  return colors
+}
 
+// --- New local PieChart component ---
+// This component creates a canvas and renders a Chart.js Pie chart
+const PieChart = defineComponent({
+  name: 'PieChart',
+  props: {
+    chartData: {
+      type: Object,
+      required: true,
+    }
+  },
+  setup(props) {
+    const canvasRef = ref(null)
+    let chartInstance = null
+
+    // Create / update Chart.js instance when data changes
+    watch(() => props.chartData, (newData) => {
+      if (chartInstance) {
+        chartInstance.data = newData
+        chartInstance.update()
+      } else if (canvasRef.value) {
+        chartInstance = new Chart(canvasRef.value.getContext('2d'), {
+          type: 'pie',
+          data: newData,
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: false,
+              }
+            }
+          }
+        })
+      }
+    }, { immediate: true })
+
+    // Cleanup Chart instance on unmount
+    onUnmounted(() => {
+      if (chartInstance) {
+        chartInstance.destroy()
+      }
+    })
+
+    return () => (
+      <canvas ref={canvasRef}></canvas>
+    )
+  }
+})
+
+onMounted(() => {
+  // Call original API fetch functions on mount
+  getSHSATSCORES()
+  getEthnicityData()
+})
 </script>
 
-
 <style scoped>
-
-
+nav button {
+  margin-right: 10px;
+  padding: 6px 12px;
+  border: none;
+  cursor: pointer;
+  background: #eee;
+  border-radius: 4px;
+  font-weight: 600;
+}
+nav button.active {
+  background: #36a2eb;
+  color: white;
+}
 </style>
-
