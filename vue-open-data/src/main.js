@@ -1,12 +1,5 @@
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
 
-export default defineConfig({
-  plugins: [vue()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-  },
-})
+createApp(App).use(router).mount('#app')
